@@ -2,10 +2,14 @@
 # -*- coding: future_fstrings -*-
 # -*- coding: utf-8 -*-
 
-import os, shutil
+import os, shutil, glob, re
 from conans import ConanFile, tools, AutoToolsBuildEnvironment
 from zipfile import BadZipfile
 
+def merge_two_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
 
 class VlcConan(ConanFile):
     name            = 'vlc'
@@ -21,6 +25,7 @@ class VlcConan(ConanFile):
     requires        = (
         'helpers/[>=0.3]@ntc/stable',
         'qt/[>=5.9.0]@ntc/stable',
+        'ffmpeg/3.4@ntc/stable',
     )
 
     build_requires  = (
@@ -32,6 +37,9 @@ class VlcConan(ConanFile):
         'compiler': ['gcc', 'Visual Studio'],
         'arch':     ['x86_64'],
     }
+
+    # system reqs:
+    # wayland-protocols protobuf-compiler
 
     def source(self):
         if 'Linux' == self.settings.os:
@@ -89,6 +97,12 @@ class VlcConan(ConanFile):
                 #     autotools.cxx_flags.append('-m32')
 
             # Debug
+            s = '\nPkg-Config Vars in Environment:\n'
+            full_env = merge_two_dicts(os.environ, env_vars)
+            for k,v in full_env.items():
+                if re.match('PKG_CONFIG.*', k):
+                    s += ' - %s=%s\n'%(k, v)
+            self.output.info(s)
             self.output.info('Configure arguments: %s'%' '.join(args))
 
             # Set up our build environment
@@ -112,6 +126,6 @@ class VlcConan(ConanFile):
                 autotools.make(args=['install'])
 
     def package_info(self):
-        self.cpp_info.libs = ["hello"]
+        self.cpp_info.libs = tools.collect_libs(self)
 
 # vim: ts=4 sw=4 expandtab ffs=unix ft=python foldmethod=marker :
