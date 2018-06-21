@@ -9,7 +9,7 @@ from zipfile import BadZipfile
 
 class VlcConan(ConanFile):
     name            = 'vlc'
-    version         = '2.2.8'
+    version         = '3.0.3'
     license         = ''
     url             = ''
     description     = 'VLC Video player'
