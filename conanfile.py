@@ -14,8 +14,8 @@ def merge_two_dicts(x, y):
 class VlcConan(ConanFile):
     name            = 'vlc'
     version         = '3.0.3'
-    license         = ''
-    url             = ''
+    license         = 'MIT'
+    url             = 'https://github.com/kheaactua/conan-vlc'
     description     = 'VLC Video player'
     options         = {'shared': [True, False]}
     default_options = 'shared=False'
@@ -24,8 +24,6 @@ class VlcConan(ConanFile):
 
     requires        = (
         'helpers/[>=0.3]@ntc/stable',
-        'qt/[>=5.9.0]@ntc/stable',
-        'ffmpeg/3.4@ntc/stable',
     )
 
     build_requires  = (
@@ -41,12 +39,18 @@ class VlcConan(ConanFile):
     # system reqs:
     # wayland-protocols protobuf-compiler
 
+    def requirements(self):
+        if 'gcc' != self.settings.compiler and 'Windows' == self.settings.os:
+            # If we're actually building VLC, we'll need some requirements
+            self.requires('qt/[>=5.9.0]@ntc/stable')
+            self.requires('ffmpeg/3.4@ntc/stable')
+
     def source(self):
         if 'Linux' == self.settings.os:
             archive = 'vlc-%s.tar.xz'%self.version
             url     = f'http://download.videolan.org/pub/videolan/vlc/{self.version}/{archive}'
         else:
-            archive = 'vlc-%s-win64.zip'%self.version
+            archive = 'vlc-%s-win64.7z'%self.version
             url     = f'http://download.videolan.org/pub/videolan/vlc/{self.version}/win64/{archive}'
 
         self.output.info(f'Downloading file {url}')
@@ -75,6 +79,10 @@ class VlcConan(ConanFile):
     def build(self):
         if 'Linux' == self.settings.os:
             self._build_linux()
+        elif 'Windows' == self.settings.os and 'gcc' != self.settings.compiler:
+            self.output.info('Skipping build on Windows')
+        else:
+            self.output.warning('Unsure how to proceed on %s'%self.settings.os)
 
     def _build_linux(self):
         with tools.chdir(self.name):
@@ -121,11 +129,41 @@ class VlcConan(ConanFile):
     def package(self):
 
         if 'gcc' == self.settings.compiler:
+            self._package_gcc()
+        elif 'Windows' == self.settings.compiler:
+            self._package_windows()
+        else:
+            self.output.warn('Unsure how to proceed with os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
+
+    def _package_gcc(self):
             with tools.chdir(self.name):
                 autotools = AutoToolsBuildEnvironment(self, win_bash=('Windows' == self.settings.os))
                 autotools.make(args=['install'])
 
+    def _package_windows(self):
+        """ Copy the assets out of the VLC SDK """
+
+        self.copy(pattern='*.dll', dst='bin', src=self.name)
+        self.copy(pattern='*.lib', dst='lib', src=os.path.join(self.name, 'sdk', 'lib'))
+        self.copy(pattern='*.pc',  dst='lib/pkgconfig', src=os.path.join(self.name, 'sdk', 'lib', 'pkgconfig'))
+        self.copy(pattern='*',     dst='include', src=os.path.join(self.name, 'sdk', 'include'))
+
     def package_info(self):
         self.cpp_info.libs = tools.collect_libs(self)
+
+        # Populate the pkg-config environment variables
+        with tools.pythonpath(self):
+            from platform_helpers import adjustPath, appendPkgConfigPath
+
+            pkg_config_path = os.path.join(self.package_folder, 'lib', 'pkgconfig')
+            appendPkgConfigPath(adjustPath(pkg_config_path), self.env_info)
+
+            pc_files = glob.glob(adjustPath(os.path.join(pkg_config_path, '*.pc')))
+            for f in pc_files:
+                p_name = re.sub(r'\.pc$', '', os.path.basename(f))
+                p_name = re.sub(r'\W', '_', p_name.upper())
+                setattr(self.env_info, f'PKG_CONFIG_{p_name}_PREFIX', adjustPath(self.package_folder))
+
+            appendPkgConfigPath(adjustPath(pkg_config_path), self.env_info)
 
 # vim: ts=4 sw=4 expandtab ffs=unix ft=python foldmethod=marker :
