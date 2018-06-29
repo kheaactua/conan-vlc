@@ -26,10 +26,6 @@ class VlcConan(ConanFile):
         'helpers/[>=0.3]@ntc/stable',
     )
 
-    build_requires  = (
-        'pkg-config/0.29.2@ntc/stable'
-    )
-
     settings        = {
         'os':       ['Linux', 'Windows'],
         'compiler': ['gcc', 'Visual Studio'],
@@ -46,6 +42,11 @@ class VlcConan(ConanFile):
     def config_options(self):
         if self.just_downloading:
             self.options.remove('shared')
+
+    def build_requirements(self):
+        self.build_requires('pkg-config/0.29.2@ntc/stable')
+        if 'Windows' == self.settings.os:
+            self.build_requires('7z_installer/1.0@conan/stable')
 
     def requirements(self):
         if not self.just_downloading:
@@ -82,6 +83,11 @@ class VlcConan(ConanFile):
             if 'Linux' == self.settings.os:
                 # no idea why I have to do this
                 self.run(f'tar -xavf {archive}')
+            elif 'Windows' == self.settings.os:
+                self.run(f'7z x {archive}')
+            else:
+                self.output.warn('Do not know how to extract %s'%archive)
+
         shutil.move(f'vlc-{self.version}', self.name)
 
     def build(self):
