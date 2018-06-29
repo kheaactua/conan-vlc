@@ -39,8 +39,16 @@ class VlcConan(ConanFile):
     # system reqs:
     # wayland-protocols protobuf-compiler
 
+    @property
+    def just_downloading(self):
+        return 'gcc' != self.settings.compiler and 'Windows' == self.settings.os
+
+    def config_options(self):
+        if self.just_downloading:
+            self.options.remove('shared')
+
     def requirements(self):
-        if 'gcc' != self.settings.compiler and 'Windows' == self.settings.os:
+        if not self.just_downloading:
             # If we're actually building VLC, we'll need some requirements
             self.requires('qt/[>=5.9.0]@ntc/stable')
             self.requires('ffmpeg/3.4@ntc/stable')
@@ -77,12 +85,13 @@ class VlcConan(ConanFile):
         shutil.move(f'vlc-{self.version}', self.name)
 
     def build(self):
+        if self.just_downloading:
+            self.output.warn('Skipping build on os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
+
         if 'Linux' == self.settings.os:
             self._build_linux()
-        elif 'Windows' == self.settings.os and 'gcc' != self.settings.compiler:
-            self.output.info('Skipping build on Windows')
         else:
-            self.output.warning('Unsure how to proceed on %s'%self.settings.os)
+            self.output.warn('Unsure how to proceed on %s'%self.settings.os)
 
     def _build_linux(self):
         with tools.chdir(self.name):
@@ -127,13 +136,16 @@ class VlcConan(ConanFile):
         pass
 
     def package(self):
-
-        if 'gcc' == self.settings.compiler:
-            self._package_gcc()
-        elif 'Windows' == self.settings.compiler:
-            self._package_windows()
+        if self.just_downloading:
+            if 'Windows' == self.settings.os:
+                self._package_windows()
+            else:
+                self.output.warn('Unsure how to proceed with os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
         else:
-            self.output.warn('Unsure how to proceed with os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
+            if 'gcc' == self.settings.compiler:
+                self._package_gcc()
+            else:
+                self.output.warn('Unsure how to proceed with os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
 
     def _package_gcc(self):
             with tools.chdir(self.name):
