@@ -20,7 +20,7 @@ class VlcConan(ConanFile):
     options         = {'shared': [True, False]}
     default_options = 'shared=False'
     generators      = 'cmake'
-    exports         = 'md5sums/*'
+    exports         = 'md5sums/*', '*.patch'
 
     requires        = (
         'helpers/[>=0.3]@ntc/stable',
@@ -89,6 +89,16 @@ class VlcConan(ConanFile):
                 self.output.warn('Do not know how to extract %s'%archive)
 
         shutil.move(f'vlc-{self.version}', self.name)
+
+        if 'Windows' == self.settings.os:
+            # Apply a patch for the poll symbol
+            b = os.path.join(self.name, 'include')
+            f = os.path.join(b, 'vlc_threads.h')
+            if os.path.exists(f): tools.patch(base_path=b, patch_file='poll.patch')
+
+            b = os.path.join(self.name, 'sdk', 'include', 'vlc', 'plugins')
+            f = os.path.join(b, 'vlc_threads.h')
+            if os.path.exists(f): tools.patch(base_path=b, patch_file='poll.patch')
 
     def build(self):
         if self.just_downloading:
