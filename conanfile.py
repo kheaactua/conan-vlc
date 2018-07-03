@@ -116,8 +116,6 @@ class VlcConan(ConanFile):
             env_vars = {}
             args = []
 
-            # env_vars['PKG
-
             if 'gcc' == self.settings.compiler and 'Windows' == self.settings.os:
                 args.append('--prefix=%s'%tools.unix_path(self.package_folder))
             else:
