@@ -100,6 +100,16 @@ class VlcConan(ConanFile):
             f = os.path.join(b, 'vlc_threads.h')
             if os.path.exists(f): tools.patch(base_path=b, patch_file='poll.patch')
 
+            # Now, patch for the undefined libvlc_media_read_cb symbol.  Even
+            # though it appears that ssize_t is defined, this still fails.
+            # Note:  If we were installing VLC for our own direct use, libvlcpp
+            # would be the proper way to go
+            tools.replace_in_file(
+                file_name=os.path.join(self.name, 'sdk', 'include', 'vlc', 'libvlc_media.h'),
+                search ='typedef ssize_t (*libvlc_media_read_cb)(void *opaque, unsigned char *buf',
+                replace='typedef     int (*libvlc_media_read_cb)(void *opaque, unsigned char *buf',
+            )
+
     def build(self):
         if self.just_downloading:
             self.output.warn('Skipping build on os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
