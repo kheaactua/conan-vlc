@@ -13,7 +13,7 @@ def merge_two_dicts(x, y):
 
 class VlcConan(ConanFile):
     name            = 'vlc'
-    version         = '3.0.4'
+    version         = '2.2.8'
     license         = 'MIT'
     url             = 'https://github.com/kheaactua/conan-vlc'
     description     = 'VLC Video player'
@@ -28,10 +28,7 @@ class VlcConan(ConanFile):
 
     settings        = {
         'os':       ['Linux', 'Windows'],
-        'compiler': {
-            'gcc': {'version': ['4.9', '5.4', '6', '6.1', '6.2', '6.3', '6.4', '6', '6.1', '6.2', '6.3', '6.4']},
-            'Visual Studio': None,
-        },
+        'compiler': ['gcc', 'Visual Studio'],
         'arch':     ['x86_64'],
     }
 
@@ -53,7 +50,7 @@ class VlcConan(ConanFile):
 
         pack_names = []
         if tools.os_info.linux_distro == 'ubuntu' or tools.os_info.linux_distro == 'debian':
-            pack_names = ['autopoint', 'flex', 'bison']
+            pack_names = ['autopoint', 'flex', 'bison', 'lua5.2']
 
         if pack_names:
             installer = tools.SystemPackageTool()
@@ -77,19 +74,23 @@ class VlcConan(ConanFile):
             archive = 'vlc-%s-win64.7z'%self.version
             url     = f'http://download.videolan.org/pub/videolan/vlc/{self.version}/win64/{archive}'
 
-        self.output.info(f'Downloading file {url}')
-        tools.download(
-            url=url,
-            filename=archive
-        )
 
-        from platform_helpers import check_hash
-        # For some reason, the md5 files put a * in front of the file names
-        check_hash(
-            file_path=r'%s'%archive,
-            hash_file=os.path.join('md5sums', f'{archive}.md5'),
-            fnc=tools.check_md5
-        )
+        from source_cache import copyFromCache
+        archive = os.path.basename(url)
+        if not copyFromCache(archive):
+            self.output.info(f'Downloading file {url}')
+            tools.download(
+                url=url,
+                filename=archive
+            )
+
+            # For some reason, the md5 files put a * in front of the file names
+            from platform_helpers import check_hash
+            check_hash(
+                file_path=r'%s'%archive,
+                hash_file=os.path.join('md5sums', f'{archive}.md5'),
+                fnc=tools.check_md5
+            )
 
         self.output.info('Extracting %s'%archive)
         try:
