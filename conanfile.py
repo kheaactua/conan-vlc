@@ -13,7 +13,7 @@ def merge_two_dicts(x, y):
 
 class VlcConan(ConanFile):
     name            = 'vlc'
-    version         = '3.0.3'
+    version         = '3.0.4'
     license         = 'MIT'
     url             = 'https://github.com/kheaactua/conan-vlc'
     description     = 'VLC Video player'
@@ -45,7 +45,7 @@ class VlcConan(ConanFile):
 
     def build_requirements(self):
         self.build_requires('pkg-config/0.29.2@ntc/stable')
-        if 'Windows' == self.settings.os:
+        if tools.os_info.is_windows:
             self.build_requires('7z_installer/1.0@conan/stable')
 
     def requirements(self):
@@ -161,7 +161,7 @@ class VlcConan(ConanFile):
 
     def package(self):
         if self.just_downloading:
-            if 'Windows' == self.settings.os:
+            if tools.os_info.is_windows:
                 self._package_windows()
             else:
                 self.output.warn('Unsure how to proceed with os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
