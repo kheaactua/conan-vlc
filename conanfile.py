@@ -28,7 +28,10 @@ class VlcConan(ConanFile):
 
     settings        = {
         'os':       ['Linux', 'Windows'],
-        'compiler': ['gcc', 'Visual Studio'],
+        'compiler': {
+            'gcc': {'version': ['4.9', '5.4', '6', '6.1', '6.2', '6.3', '6.4', '6', '6.1', '6.2', '6.3', '6.4']},
+            'Visual Studio': None,
+        },
         'arch':     ['x86_64'],
     }
 
@@ -47,6 +50,18 @@ class VlcConan(ConanFile):
         self.build_requires('pkg-config/0.29.2@ntc/stable')
         if tools.os_info.is_windows:
             self.build_requires('7z_installer/1.0@conan/stable')
+
+        pack_names = []
+        if tools.os_info.linux_distro == 'ubuntu' or tools.os_info.linux_distro == 'debian':
+            pack_names = ['autopoint', 'flex', 'bison']
+
+        if pack_names:
+            installer = tools.SystemPackageTool()
+            try:
+                installer.update() # Update the package database
+                installer.install(' '.join(pack_names)) # Install the package
+            except ConanException:
+                self.output.warn('Could not run build requirements installer.  Requisite packages might be missing.')
 
     def requirements(self):
         if not self.just_downloading:
