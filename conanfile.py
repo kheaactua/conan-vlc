@@ -6,10 +6,6 @@ import os, shutil, glob, re
 from conans import ConanFile, tools, AutoToolsBuildEnvironment
 from zipfile import BadZipfile
 
-def merge_two_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
 
 class VlcConan(ConanFile):
     name            = 'vlc'
@@ -24,6 +20,7 @@ class VlcConan(ConanFile):
 
     requires        = (
         'helpers/[>=0.3]@ntc/stable',
+        'xml2/2.9.8@ntc/stable',
     )
 
     settings        = {
@@ -50,7 +47,7 @@ class VlcConan(ConanFile):
 
         pack_names = []
         if tools.os_info.linux_distro == 'ubuntu' or tools.os_info.linux_distro == 'debian':
-            pack_names = ['autopoint', 'flex', 'bison', 'lua5.2']
+            pack_names = ['autopoint', 'flex', 'bison', 'libmad0-dev', 'libswscale-dev', 'liba52-0.7.4-dev', 'xcb', 'libgcrypt11-dev']
 
         if pack_names:
             installer = tools.SystemPackageTool()
@@ -60,12 +57,6 @@ class VlcConan(ConanFile):
             except ConanException:
                 self.output.warn('Could not run build requirements installer.  Requisite packages might be missing.')
 
-    def requirements(self):
-        if not self.just_downloading:
-            # If we're actually building VLC, we'll need some requirements
-            self.requires('qt/[>=5.9.0]@ntc/stable')
-            self.requires('ffmpeg/3.4@ntc/stable')
-
     def source(self):
         if 'Linux' == self.settings.os:
             archive = 'vlc-%s.tar.xz'%self.version
@@ -73,7 +64,6 @@ class VlcConan(ConanFile):
         else:
             archive = 'vlc-%s-win64.7z'%self.version
             url     = f'http://download.videolan.org/pub/videolan/vlc/{self.version}/win64/{archive}'
-
 
         from source_cache import copyFromCache
         archive = os.path.basename(url)
@@ -147,15 +137,25 @@ class VlcConan(ConanFile):
             else:
                 args.append('--prefix=%s'%self.package_folder)
 
-            if str(self.settings.os) in ['Linux', 'Macos']:
-                autotools.fpic = True
-                # if self.settings.arch == 'x86':
-                #     env_vars['ABI'] = '32'
-                #     autotools.cxx_flags.append('-m32')
+            autotools.fpic = True
+
+            # not sure if this is a good idea..
+            args.append('--disable-avcodec')
+            args.append('--disable-swscale')
+
+            # Weird error
+            args.append('--disable-lua')
+
+            # VLC 2 seems to only want Qt4 (and 3 will only want Qt5)
+            args.append('--disable-qt')
 
             # Debug
             s = '\nPkg-Config Vars in Environment:\n'
-            full_env = merge_two_dicts(os.environ, env_vars)
+            from merge_dicts import merge_two_dicts_with_paths
+            full_env = merge_two_dicts_with_paths(os.environ, env_vars)
+
+            from platform_helpers import reorderPkgConfigPath
+            full_env['PKG_CONFIG_PATH'] = reorderPkgConfigPath(full_env['PKG_CONFIG_PATH'], self)
             for k,v in full_env.items():
                 if re.match('PKG_CONFIG.*', k):
                     s += ' - %s=%s\n'%(k, v)
@@ -163,7 +163,7 @@ class VlcConan(ConanFile):
             self.output.info('Configure arguments: %s'%' '.join(args))
 
             # Set up our build environment
-            with tools.environment_append(env_vars):
+            with tools.environment_append(full_env):
                 self.run('./bootstrap')
                 autotools.configure(args=args)
                 autotools.make()
