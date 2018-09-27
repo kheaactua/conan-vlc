@@ -155,7 +155,7 @@ class VlcConan(ConanFile):
             full_env = merge_two_dicts_with_paths(os.environ, env_vars)
 
             from platform_helpers import reorderPkgConfigPath
-            full_env['PKG_CONFIG_PATH'] = reorderPkgConfigPath(full_env['PKG_CONFIG_PATH'], self)
+            full_env['PKG_CONFIG_PATH'] = reorderPkgConfigPath(full_env['PKG_CONFIG_PATH'], tools.is_windows)
             for k,v in full_env.items():
                 if re.match('PKG_CONFIG.*', k):
                     s += ' - %s=%s\n'%(k, v)
