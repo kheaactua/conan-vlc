@@ -4,6 +4,7 @@
 
 import os, shutil, glob, re
 from conans import ConanFile, tools, AutoToolsBuildEnvironment
+from conans.errors import ConanException
 from zipfile import BadZipfile
 
 def merge_two_dicts(x, y):
@@ -53,7 +54,7 @@ class VlcConan(ConanFile):
 
         pack_names = []
         if tools.os_info.linux_distro == 'ubuntu' or tools.os_info.linux_distro == 'debian':
-            pack_names = ['autopoint', 'flex', 'bison']
+            pack_names = ['autopoint', 'libtool', 'automake']
 
         if pack_names:
             installer = tools.SystemPackageTool()
@@ -62,6 +63,19 @@ class VlcConan(ConanFile):
                 installer.install(' '.join(pack_names)) # Install the package
             except ConanException:
                 self.output.warn('Could not run build requirements installer.  Requisite packages might be missing.')
+
+    def system_requirements(self):
+        pack_names = []
+        if tools.os_info.linux_distro == 'ubuntu' or tools.os_info.linux_distro == 'debian':
+            pack_names = ['flex', 'bison', 'gettext']
+
+        if pack_names:
+            installer = tools.SystemPackageTool()
+            try:
+                installer.update() # Update the package database
+                installer.install(' '.join(pack_names)) # Install the package
+            except ConanException:
+                self.output.warn('Could not run system requirements installer.  Requisite packages might be missing.')
 
     def requirements(self):
         if not self.just_downloading:
