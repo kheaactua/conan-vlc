@@ -86,11 +86,13 @@ class VlcConan(ConanFile):
             archive = 'vlc-%s-win64.7z'%self.version
             url     = f'http://download.videolan.org/pub/videolan/vlc/{self.version}/win64/{archive}'
 
-        self.output.info(f'Downloading file {url}')
-        tools.download(
-            url=url,
-            filename=archive
-        )
+        from source_cache import copyFromCache
+        if not copyFromCache(archive):
+            self.output.info(f'Downloading file {url}')
+            tools.download(
+                url=url,
+                filename=archive
+            )
 
         from platform_helpers import check_hash
         # For some reason, the md5 files put a * in front of the file names
