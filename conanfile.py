@@ -40,7 +40,7 @@ class VlcConan(ConanFile):
 
     @property
     def just_downloading(self):
-        return 'gcc' != self.settings.compiler and 'Windows' == self.settings.os
+        return 'gcc' != self.settings.compiler and tools.os_info.is_windows
 
     def config_options(self):
         if self.just_downloading:
@@ -70,7 +70,7 @@ class VlcConan(ConanFile):
             self.requires('ffmpeg/3.4@ntc/stable')
 
     def source(self):
-        if 'Linux' == self.settings.os:
+        if tools.os_info.is_linux:
             archive = 'vlc-%s.tar.xz'%self.version
             url     = f'http://download.videolan.org/pub/videolan/vlc/{self.version}/{archive}'
         else:
@@ -95,17 +95,17 @@ class VlcConan(ConanFile):
         try:
             tools.unzip(archive)
         except BadZipfile:
-            if 'Linux' == self.settings.os:
+            if tools.os_info.is_linux:
                 # no idea why I have to do this
                 self.run(f'tar -xavf {archive}')
-            elif 'Windows' == self.settings.os:
+            elif tools.os_info.is_windows:
                 self.run(f'7z x {archive}')
             else:
                 self.output.warn('Do not know how to extract %s'%archive)
 
         shutil.move(f'vlc-{self.version}', self.name)
 
-        if 'Windows' == self.settings.os:
+        if tools.os_info.is_windows:
             # Apply a patch for the poll symbol
             b = os.path.join(self.name, 'include')
             f = os.path.join(b, 'vlc_threads.h')
@@ -129,24 +129,24 @@ class VlcConan(ConanFile):
         if self.just_downloading:
             self.output.warn('Skipping build on os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
 
-        if 'Linux' == self.settings.os:
+        if tools.os_info.is_linux:
             self._build_linux()
         else:
             self.output.warn('Unsure how to proceed on %s'%self.settings.os)
 
     def _build_linux(self):
         with tools.chdir(self.name):
-            autotools = AutoToolsBuildEnvironment(self, win_bash=('Windows' == self.settings.os))
+            autotools = AutoToolsBuildEnvironment(self, win_bash=tools.os_info.is_linux)
 
             env_vars = {}
             args = []
 
-            if 'gcc' == self.settings.compiler and 'Windows' == self.settings.os:
+            if 'gcc' == self.settings.compiler and tools.os_info.is_windows:
                 args.append('--prefix=%s'%tools.unix_path(self.package_folder))
             else:
                 args.append('--prefix=%s'%self.package_folder)
 
-            if str(self.settings.os) in ['Linux', 'Macos']:
+            if tools.os_info.is_linux or tools.os_info.is_macos:
                 autotools.fpic = True
                 # if self.settings.arch == 'x86':
                 #     env_vars['ABI'] = '32'
@@ -187,9 +187,9 @@ class VlcConan(ConanFile):
                 self.output.warn('Unsure how to proceed with os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
 
     def _package_gcc(self):
-            with tools.chdir(self.name):
-                autotools = AutoToolsBuildEnvironment(self, win_bash=('Windows' == self.settings.os))
-                autotools.make(args=['install'])
+        with tools.chdir(self.name):
+            autotools = AutoToolsBuildEnvironment(self, win_bash=tools.os_info.is_windows)
+            autotools.make(args=['install'])
 
     def _package_windows(self):
         """ Copy the assets out of the VLC SDK """
