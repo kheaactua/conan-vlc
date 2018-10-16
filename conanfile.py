@@ -7,11 +7,6 @@ from conans import ConanFile, tools, AutoToolsBuildEnvironment
 from conans.errors import ConanException
 from zipfile import BadZipfile
 
-def merge_two_dicts(x, y):
-    z = x.copy()   # start with x's keys and values
-    z.update(y)    # modifies z with y's keys and values & returns None
-    return z
-
 class VlcConan(ConanFile):
     name            = 'vlc'
     version         = '3.0.4'
@@ -166,9 +161,11 @@ class VlcConan(ConanFile):
                 #     env_vars['ABI'] = '32'
                 #     autotools.cxx_flags.append('-m32')
 
+            from merge_dicts import merge_two_dicts_with_paths
+
             # Debug
             s = '\nPkg-Config Vars in Environment:\n'
-            full_env = merge_two_dicts(os.environ, env_vars)
+            full_env = merge_two_dicts_with_paths(os.environ, env_vars)
             for k,v in full_env.items():
                 if re.match('PKG_CONFIG.*', k):
                     s += ' - %s=%s\n'%(k, v)
