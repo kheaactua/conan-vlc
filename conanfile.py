@@ -139,6 +139,7 @@ class VlcConan(ConanFile):
     def build(self):
         if self.just_downloading:
             self.output.warn('Skipping build on os=%s and compiler=%s'%(self.settings.os, self.settings.compiler))
+            return
 
         if tools.os_info.is_linux:
             self._build_linux()
