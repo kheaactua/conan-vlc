@@ -118,13 +118,24 @@ class VlcConan(ConanFile):
 
         if tools.os_info.is_windows:
             # Apply a patch for the poll symbol
+            patch_files = []
+            no_patch_files = []
+
             b = os.path.join(self.name, 'include')
             f = os.path.join(b, 'vlc_threads.h')
-            if os.path.exists(f): tools.patch(base_path=b, patch_file='poll.patch')
+            if os.path.exists(f): patch_files.append(f)
+            else: no_patch_files.append(f)
 
             b = os.path.join(self.name, 'sdk', 'include', 'vlc', 'plugins')
             f = os.path.join(b, 'vlc_threads.h')
-            if os.path.exists(f): tools.patch(base_path=b, patch_file='poll.patch')
+            if os.path.exists(f): patch_files.append(f)
+            else: no_patch_files.append(f)
+
+            for f in patch_files:
+                self.output.info('Applying poll.patch to %s'%f)
+                tools.patch(base_path=os.path.dirname(b), patch_file='poll.patch')
+            for f in no_patch_files:
+                self.output.info('%s does not exist, not patching'%f)
 
             # Now, patch for the undefined libvlc_media_read_cb symbol.  Even
             # though it appears that ssize_t is defined, this still fails.
